@@ -1,6 +1,5 @@
 import sys
 from collections import deque
-import math
 
 locations = {}
 elevations = {}
@@ -47,17 +46,22 @@ for location, elevation in elevations.items():
   neighbors = [above, below, left, right]
 
   for neighbor in neighbors:
+    # since we have one end and many possible starts, it's faster to start
+    # from the end and work our way backwards, stopping when we reach
+    # any of the start nodes
+    #
+    # we reverse the condition from part one:
     # a "node" in the grid is only "connected" to one of its neighbors if
-    # the elevation of the neighbor is AT MOST one step higher
-    if neighbor != None and elevations[neighbor] <= elevation + 1:
+    # the elevation of the neighbor is AT LEAST more than one step lower
+    if neighbor != None and elevations[neighbor] >= elevation - 1:
       locations[location].add(neighbor)
 
-# unweighted - start and end
-def bfs_shorest_path(graph, start, end):
+# unweighted - start with multiple ends
+def bfs_shorest_path(graph, start, ends):
   q = deque([[start]])
   visited = set()
 
-  if start == end:
+  if start in ends:
     return [start]
 
   while len(q) > 0:
@@ -72,7 +76,7 @@ def bfs_shorest_path(graph, start, end):
         new_path.append(neighbor)
         q.append(new_path)
 
-        if neighbor == end:
+        if neighbor in ends:
           return new_path
       
       visited.add(node)
@@ -83,15 +87,6 @@ def has_lowest_elevation(location):
   return elevations[location] == ord('a')
 
 starts = list(filter(has_lowest_elevation, elevations.keys()))
-fewest_steps = math.inf
-
-for start in starts:
-  path = bfs_shorest_path(locations, start, end)
-
-  if path != None:
-    steps = len(path) - 1
-
-    if steps < fewest_steps:
-      fewest_steps = steps
+fewest_steps = len(bfs_shorest_path(locations, end, starts)) - 1
 
 print(fewest_steps)

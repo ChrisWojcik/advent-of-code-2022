@@ -18,6 +18,7 @@ for line in sys.stdin:
   valves[valve] = neighbors
   flow_rates[valve] = flow_rate
 
+# memoization helper
 def memoize(fn):
   memo = {}
 
@@ -31,6 +32,8 @@ def memoize(fn):
 
   return memozied
 
+# BFS the valve graph to return the shortest path length
+# betweent two valves
 @memoize
 def shorest_path_length(start, end):
   q = deque([[start]])
@@ -58,13 +61,13 @@ def shorest_path_length(start, end):
   
   return None
 
-def should_try_to_open_valve(valve):
-  return flow_rates[valve] != 0
-
 # DFS of every possible order we could open the valves in
 #
 # cut down on the search space by eliminating valves with flow rate of 0
 # we will never stop at those valves to open them
+def should_try_to_open_valve(valve):
+  return flow_rates[valve] != 0
+
 valves_to_open = list(filter(should_try_to_open_valve, valves.keys()))
 
 start_location = 'AA'

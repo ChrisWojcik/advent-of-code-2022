@@ -153,25 +153,12 @@ while len(s):
 # pressure released by opening these valves in any order
 # and return the highest value
 def max_pressure_from_valves(valves):
-  valves = sorted(valves)
+  perm_key = ','.join(sorted(valves))
   maximum_pressure = 0
-  perm_key = None
 
-  # because of the timelimit, we may only have been
-  # able to open some of the valves in the subset
-  #
-  # keep popping off the last element
-  # until we find a key that is valid
-  while len(valves) > 0:
-    to_s = ','.join(valves)
-
-    if to_s in path_permutations:
-      perm_key = to_s
-      break
-    else:
-      valves.pop()
-
-  if not perm_key:
+  # this subset of valves could not be opened within
+  # the timelimit in any order
+  if perm_key not in path_permutations:
     return 0
 
   for perm in path_permutations[perm_key]:
@@ -193,8 +180,8 @@ def max_pressure_from_valves(valves):
 #
 # https://en.wikipedia.org/wiki/Stirling_numbers_of_the_second_kind
 for i, subsets in enumerate(subsets_k(valves_to_open, 2)):
-  my_path = 'AA,' + ','.join(subsets[0])
-  elephant_path = 'AA,' + ','.join(subsets[1])
+  my_path = 'AA,' + ','.join(sorted(subsets[0]))
+  elephant_path = 'AA,' + ','.join(sorted(subsets[1]))
 
   my_pressure = max_pressure_from_valves(['AA'] + subsets[0])
   elephant_pressure = max_pressure_from_valves(['AA'] + subsets[1])

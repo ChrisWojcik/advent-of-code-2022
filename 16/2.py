@@ -1,7 +1,8 @@
 import sys
 import re
 import time
-from collections import deque
+from itertools import combinations
+from collections import deque, defaultdict
 
 start_time = time.time()
 
@@ -79,6 +80,10 @@ def shorest_path_length(start, end):
   
   return None
 
+@memoize
+def valve_choose_r(serialized_valves, r):
+  return combinations(serialized_valves.split(','), r)
+
 # DFS of every possible order we could open the valves in
 #
 # cut down on the search space by eliminating valves with flow rate of 0
@@ -92,8 +97,7 @@ start_location = 'AA'
 time_limit = 26
 
 maximum_pressure = 0
-pressure_by_path = {}
-path_permutations = {}
+pressure_by_path = defaultdict(lambda: 0)
 
 # a stack of our current branches - [path], minutes_elapsed, { valve: <minute opened> }
 s = [[[start_location], 0, {}]]
@@ -110,20 +114,24 @@ while len(s):
 
   maximum_pressure = max(maximum_pressure, pressure_released)
 
-  path_key = ','.join(path)
-  pressure_by_path[path_key] = pressure_released
-
-  # keep track of all permutations of this path
+  # sort the valves lexically and use it as a key
   # so we can determine which ordering of these valves
   # nets the greatest pressure released
-  # the key is the valves lexically sorted
-  path_key_for_perms = ','.join(list(sorted(path)))
-  path_permutations.setdefault(path_key_for_perms, [])
-  path_permutations[path_key_for_perms].append(path_key)
+  path_key = ','.join(sorted(path))
+  pressure_by_path[path_key] = max(pressure_by_path[path_key], pressure_released)
 
-  # if we've opened all the valves, calculate the maximum pressure
-  # if we've run out of time, calculate the pressure and abandon this "branch"
+  # if we've run out of time, abandon this "branch"
   if minutes_elapsed >= time_limit or len(path) == len(valves_to_open) + 1:
+    # because we may not have opened all of the valves, all other possible ways
+    # of adding the remaining valves need to be added to the lookup
+    # but the pressure will be the same
+    remaining_valves = [valve for valve in valves_to_open if valve not in path]
+
+    for r in range(1, len(remaining_valves)):
+      for combination in valve_choose_r(','.join(sorted(remaining_valves)), r):
+        key = ','.join(sorted(path + list(combination)))
+        pressure_by_path[key] = max(pressure_by_path[key], pressure_released)
+
     continue
   else:
     for next_valve in valves_to_open:
@@ -148,43 +156,15 @@ while len(s):
 
         s.append([new_path, new_minutes_elapsed, new_open_valves])
 
-# given a subset of valves, convert the list to a "key"
-# to look up the possible pre-calculated values for
-# pressure released by opening these valves in any order
-# and return the highest value
-def max_pressure_from_valves(valves):
-  perm_key = ','.join(sorted(valves))
-  maximum_pressure = 0
-
-  # this subset of valves could not be opened within
-  # the timelimit in any order
-  if perm_key not in path_permutations:
-    return 0
-
-  for perm in path_permutations[perm_key]:
-    maximum_pressure = max(maximum_pressure, pressure_by_path[perm])
-
-  return maximum_pressure
-
 # check if we can increase the pressure by training the elephants
 #
 # generate all of the possible ways to split the valves
 # between me and the elephants, it doesn't matter who takes which subset
 #
-# since we are ignoring opening valves with 0 flow rate
-# and we pre-calculated the "valid" orderings above
-# there are a small enough number of possible partitions that
-# the possible partitions (ignoring order)
-# can be generated in a "reasonable" amount of time
-# for the example problem
-#
 # https://en.wikipedia.org/wiki/Stirling_numbers_of_the_second_kind
 for i, subsets in enumerate(subsets_k(valves_to_open, 2)):
-  my_path = 'AA,' + ','.join(sorted(subsets[0]))
-  elephant_path = 'AA,' + ','.join(sorted(subsets[1]))
-
-  my_pressure = max_pressure_from_valves(['AA'] + subsets[0])
-  elephant_pressure = max_pressure_from_valves(['AA'] + subsets[1])
+  my_pressure = pressure_by_path[','.join(sorted(['AA'] + subsets[0]))]
+  elephant_pressure = pressure_by_path[','.join(sorted(['AA'] + subsets[1]))]
 
   maximum_pressure = max(maximum_pressure, my_pressure + elephant_pressure)
 
